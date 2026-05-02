@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Laboratorium SIG · Universitas Gadjah Mada</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    *{
+      box-sizing:border-box;
+      margin:0;
+      padding:0;
+    }
+
+    body{
+      font-family:'Courier New', monospace;
+      background:#0d1117;
+      color:#e6edf3;
+      display:flex;
+      flex-direction:column;
+      height:100vh;
+      overflow:hidden;
+    }
+
+    /* HEADER */
+    header{
+      background:#161b22;
+      border-bottom:1px solid #30363d;
+      padding:10px 16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      flex-shrink:0;
+      z-index:1000;
+    }
+
+    .header-left{
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+
+    .geo-badge{
+      background:#1f6feb;
+      color:#fff;
+      font-size:11px;
+      font-weight:700;
+      padding:4px 8px;
+      border-radius:4px;
+      letter-spacing:1px;
+    }
+
+    .header-title h1{
+      font-size:13px;
+      font-weight:600;
+      color:#e6edf3;
+    }
+
+    .header-title p{
+      font-size:11px;
+      color:#8b949e;
+      margin-top:2px;
+    }
+
+    .header-right{
+      display:flex;
+      gap:8px;
+    }
+
+    .badge-pill{
+      font-size:11px;
+      padding:3px 10px;
+      border-radius:20px;
+      border:1px solid;
+    }
+
+    .badge-osm{
+      color:#58a6ff;
+      border-color:#1f6feb;
+      background:#0d2137;
+    }
+
+    .badge-leaflet{
+      color:#3fb950;
+      border-color:#238636;
+      background:#0d1f12;
+    }
+
+    /* LAYOUT */
+    .app-body{
+      display:flex;
+      flex:1;
+      overflow:hidden;
+    }
+
+    /* SIDEBAR */
+    #sidebar{
+      width:250px;
+      background:#161b22;
+      border-right:1px solid #30363d;
+      display:flex;
+      flex-direction:column;
+      overflow-y:auto;
+      flex-shrink:0;
+      z-index:1000;
+    }
+
+    .sidebar-section{
+      padding:12px;
+      border-bottom:1px solid #21262d;
+    }
+
+    .sidebar-label{
+      font-size:10px;
+      letter-spacing:1.5px;
+      color:#8b949e;
+      text-transform:uppercase;
+      margin-bottom:8px;
+      font-weight:600;
+    }
+
+    .tool-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:6px;
+    }
+
+    .tool-btn{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      padding:8px 10px;
+      border-radius:6px;
+      border:1px solid #30363d;
+      background:#21262d;
+      color:#c9d1d9;
+      font-size:12px;
+      cursor:pointer;
+      transition:0.15s;
+      font-family:'Courier New', monospace;
+    }
+
+    .tool-btn:hover{
+      background:#2d333b;
+      border-color:#58a6ff;
+      color:#58a6ff;
+    }
+
+    .tool-btn.active{
+      background:#1f3a5f;
+      border-color:#58a6ff;
+      color:#58a6ff;
+    }
+
+    .hint-box{
+      background:#0d2137;
+      border:1px solid #1f6feb;
+      border-radius:6px;
+      padding:8px 10px;
+      font-size:11px;
+      color:#58a6ff;
+      line-height:1.5;
+      display:none;
+      margin-top:10px;
+    }
+
+    .hint-box.visible{
+      display:block;
+    }
+
+    .color-row{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin-top:10px;
+    }
+
+    .color-row label{
+      font-size:11px;
+      color:#8b949e;
+    }
+
+    .color-row input[type=color]{
+      width:32px;
+      height:24px;
+      border:none;
+      background:none;
+      cursor:pointer;
+    }
+
+    .color-row input[type=range]{
+      flex:1;
+    }
+
+    .action-row{
+      display:flex;
+      gap:6px;
+      margin-top:10px;
+    }
+
+    .btn-finish,
+    .btn-cancel{
+      flex:1;
+      padding:7px 0;
+      border-radius:6px;
+      font-size:12px;
+      cursor:pointer;
+      display:none;
+      font-family:'Courier New', monospace;
+    }
+
+    .btn-finish{
+      background:#238636;
+      border:1px solid #2ea043;
+      color:white;
+    }
+
+    .btn-cancel{
+      background:#21262d;
+      border:1px solid #30363d;
+      color:#8b949e;
+    }
+
+    .btn-clear-all{
+      width:100%;
+      margin-top:8px;
+      padding:7px 0;
+      border-radius:6px;
+      font-size:12px;
+      cursor:pointer;
+      background:#21262d;
+      border:1px solid #30363d;
+      color:#f85149;
+      font-family:'Courier New', monospace;
+    }
+
+    .obj-list{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+
+    .obj-item{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius:6px;
+      border:1px solid #21262d;
+      background:#0d1117;
+      cursor:pointer;
+      transition:0.15s;
+    }
+
+    .obj-item:hover{
+      background:#161b22;
+      border-color:#30363d;
+    }
+
+    .obj-icon{
+      width:18px;
+      height:18px;
+      border-radius:4px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:10px;
+    }
+
+    .obj-info{
+      flex:1;
+    }
+
+    .obj-name{
+      font-size:12px;
+      color:#c9d1d9;
+    }
+
+    .obj-type{
+      font-size:10px;
+      color:#8b949e;
+    }
+
+    .obj-del{
+      border:none;
+      background:none;
+      color:#f85149;
+      cursor:pointer;
+      font-size:14px;
+    }
+
+    .empty-state{
+      font-size:11px;
+      color:#8b949e;
+      text-align:center;
+      padding:12px 0;
+    }
+
+    #map{
+      flex:1;
+    }
+
+    #coords{
+      position:absolute;
+      bottom:24px;
+      left:266px;
+      background:rgba(22,27,34,0.9);
+      border:1px solid #30363d;
+      border-radius:6px;
+      padding:4px 10px;
+      font-size:11px;
+      color:#8b949e;
+      z-index:999;
+      pointer-events:none;
+    }
+
+    .leaflet-popup-content-wrapper{
+      background:#161b22 !important;
+      border:1px solid #30363d !important;
+      color:#c9d1d9 !important;
+    }
+
+    .leaflet-popup-tip{
+      background:#30363d !important;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <span class="geo-badge">GEO</span>
+
+    <div class="header-title">
+      <h1>Ahmad Hasan</h1>
+      <p>Acara V · TIG</p>
+    </div>
+  </div>
+
+  <div class="header-right">
+    <span class="badge-pill badge-osm">OpenStreetMap</span>
+    <span class="badge-pill badge-leaflet">Leaflet.js 1.9.4</span>
+  </div>
+</header>
+
+<div class="app-body">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+
+    <div class="sidebar-section">
+
+      <div class="sidebar-label">Drawing Tools</div>
+
+      <div class="tool-grid">
+        <button class="tool-btn" id="btn-marker" onclick="setTool('marker')">
+          📍 Marker
+        </button>
+
+        <button class="tool-btn" id="btn-circle" onclick="setTool('circle')">
+          ⭕ Lingkaran
+        </button>
+
+        <button class="tool-btn" id="btn-polygon" onclick="setTool('polygon')">
+          ⬡ Polygon
+        </button>
+
+        <button class="tool-btn" id="btn-line" onclick="setTool('line')">
+          〰 Garis
+        </button>
+      </div>
+
+      <div class="hint-box" id="hint-box"></div>
+
+      <div class="color-row">
+        <label>Warna</label>
+        <input type="color" id="pick-color" value="#1f6feb">
+
+        <label>Opacity</label>
+        <input type="range" id="pick-opacity" min="0" max="100" value="40">
+
+        <span id="opacity-val">40%</span>
+      </div>
+
+      <div class="action-row">
+        <button class="btn-finish" id="btn-finish" onclick="finishDraw()">
+          ✓ Selesai
+        </button>
+
+        <button class="btn-cancel" id="btn-cancel" onclick="cancelDraw()">
+          ✕ Batal
+        </button>
+      </div>
+
+      <button class="btn-clear-all" onclick="clearAll()">
+        Hapus Semua
+      </button>
+
+    </div>
+
+    <div class="sidebar-section" style="flex:1;">
+
+      <div class="sidebar-label">Objek Digambar</div>
+
+      <div class="obj-list" id="obj-list">
+        <div class="empty-state" id="empty-msg">
+          Mana AOI nya bro
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- MAP -->
+  <div id="map"></div>
+  <div id="coords">·· ··</div>
+
+</div>
+
+<script>
+
+  // MAP
+  var map = L.map('map').setView([-8.31837, 114.12220],14);
+
+  L.tileLayer(
+    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {
+      maxZoom:19,
+      attribution:'© OpenStreetMap'
+    }
+  ).addTo(map);
+
+  // prevent sidebar issue
+  L.DomEvent.disableClickPropagation(document.getElementById('sidebar'));
+  L.DomEvent.disableScrollPropagation(document.getElementById('sidebar'));
+
+  // coordinate display
+  map.on('mousemove', function(e){
+    document.getElementById('coords').textContent =
+      'Lat: ' + e.latlng.lat.toFixed(6) +
+      ' | Lng: ' + e.latlng.lng.toFixed(6);
+  });
+
+  // STATE
+  var currentTool = null;
+  var drawingPoints = [];
+  var tempMarkers = [];
+  var tempLine = null;
+  var tempPreview = null;
+  var circleStart = null;
+
+  var objects = [];
+
+  var objCounter = {
+    marker:0,
+    circle:0,
+    polygon:0,
+    line:0
+  };
+
+  // HINTS
+  var hints = {
+    marker:'📍 Klik peta untuk membuat marker.',
+    circle:'⭕ Klik titik pusat lalu klik lagi menentukan radius.',
+    polygon:'⬡ Klik beberapa titik lalu tekan selesai.',
+    line:'〰 Klik beberapa titik lalu tekan selesai.'
+  };
+
+  // SET TOOL
+  function setTool(tool){
+
+    cancelDraw();
+
+    currentTool = tool;
+
+    updateToolUI();
+
+    document.getElementById('hint-box').classList.add('visible');
+    document.getElementById('hint-box').textContent = hints[tool];
+
+    document.getElementById('btn-cancel').style.display = 'block';
+
+    if(tool === 'polygon' || tool === 'line'){
+      document.getElementById('btn-finish').style.display = 'block';
+    }
+
+    map.getContainer().style.cursor = 'crosshair';
+  }
+
+  // UPDATE TOOL UI
+  function updateToolUI(){
+
+    ['marker','circle','polygon','line'].forEach(function(t){
+
+      document.getElementById('btn-' + t)
+      .classList.toggle('active', currentTool === t);
+
+    });
+
+  }
+
+  // CANCEL DRAW
+  function cancelDraw(){
+
+    currentTool = null;
+
+    drawingPoints = [];
+
+    tempMarkers.forEach(function(m){
+      map.removeLayer(m);
+    });
+
+    tempMarkers = [];
+
+    if(tempLine){
+      map.removeLayer(tempLine);
+      tempLine = null;
+    }
+
+    if(tempPreview){
+      map.removeLayer(tempPreview);
+      tempPreview = null;
+    }
+
+    circleStart = null;
+
+    document.getElementById('btn-finish').style.display = 'none';
+    document.getElementById('btn-cancel').style.display = 'none';
+
+    document.getElementById('hint-box').classList.remove('visible');
+
+    map.getContainer().style.cursor = '';
+
+    updateToolUI();
+  }
+
+  // MAP CLICK
+  map.on('click', function(e){
+
+    if(!currentTool) return;
+
+    var color = document.getElementById('pick-color').value;
+
+    var opacity =
+      parseInt(document.getElementById('pick-opacity').value)/100;
+
+    var ll = e.latlng;
+
+    // MARKER
+    if(currentTool === 'marker'){
+
+      objCounter.marker++;
+
+      var name = 'Marker ' + objCounter.marker;
+
+      var marker = L.marker(ll).addTo(map);
+
+      marker.bindPopup(
+        '<b>' + name + '</b><br>' +
+        ll.lat.toFixed(5) + ', ' +
+        ll.lng.toFixed(5)
+      );
+
+      registerObject(marker,'marker',name);
+
+      cancelDraw();
+    }
+
+    // CIRCLE
+    else if(currentTool === 'circle'){
+
+      if(!circleStart){
+
+        circleStart = ll;
+
+        tempPreview = L.circleMarker(ll,{
+          radius:5,
+          color:color
+        }).addTo(map);
+
+      } else {
+
+        var radius = Math.round(
+          map.distance(circleStart,ll)
+        );
+
+        objCounter.circle++;
+
+        var name = 'Lingkaran ' + objCounter.circle;
+
+        var circle = L.circle(circleStart,{
+          radius:radius,
+          color:color,
+          fillColor:color,
+          fillOpacity:opacity
+        }).addTo(map);
+
+        circle.bindPopup(
+          '<b>' + name + '</b><br>' +
+          'Radius: ' + radius + ' meter'
+        );
+
+        registerObject(circle,'circle',name);
+
+        cancelDraw();
+      }
+    }
+
+    // POLYGON & LINE
+    else if(currentTool === 'polygon' || currentTool === 'line'){
+
+      drawingPoints.push([ll.lat,ll.lng]);
+
+      var dot = L.circleMarker(ll,{
+        radius:4,
+        color:color,
+        fillColor:color,
+        fillOpacity:1
+      }).addTo(map);
+
+      tempMarkers.push(dot);
+
+      if(tempLine){
+        map.removeLayer(tempLine);
+      }
+
+      tempLine = L.polyline(drawingPoints,{
+        color:color,
+        weight:2,
+        dashArray:'4,4'
+      }).addTo(map);
+    }
+
+  });
+
+  // FINISH DRAW
+  function finishDraw(){
+
+    var color = document.getElementById('pick-color').value;
+
+    var opacity =
+      parseInt(document.getElementById('pick-opacity').value)/100;
+
+    // POLYGON
+    if(currentTool === 'polygon'){
+
+      if(drawingPoints.length < 3){
+        alert('Polygon minimal 3 titik');
+        return;
+      }
+
+      objCounter.polygon++;
+
+      var name = 'Polygon ' + objCounter.polygon;
+
+      var polygon = L.polygon(drawingPoints,{
+        color:color,
+        fillColor:color,
+        fillOpacity:opacity
+      }).addTo(map);
+
+      polygon.bindPopup(
+        '<b>' + name + '</b><br>' +
+        drawingPoints.length + ' titik'
+      );
+
+      registerObject(polygon,'polygon',name);
+
+      cancelDraw();
+    }
+
+    // LINE
+    else if(currentTool === 'line'){
+
+      if(drawingPoints.length < 2){
+        alert('Garis minimal 2 titik');
+        return;
+      }
+
+      objCounter.line++;
+
+      var name = 'Garis ' + objCounter.line;
+
+      var line = L.polyline(drawingPoints,{
+        color:color,
+        weight:3
+      }).addTo(map);
+
+      line.bindPopup(
+        '<b>' + name + '</b><br>' +
+        drawingPoints.length + ' titik'
+      );
+
+      registerObject(line,'line',name);
+
+      cancelDraw();
+    }
+  }
+
+  // OBJECT UI
+  var typeIcon = {
+    marker:'📍',
+    circle:'⭕',
+    polygon:'⬡',
+    line:'〰'
+  };
+
+  var typeBg = {
+    marker:'#1f3a5f',
+    circle:'#3a1f5f',
+    polygon:'#1f5f3a',
+    line:'#5f3a1f'
+  };
+
+  var typeLabel = {
+    marker:'Marker',
+    circle:'Lingkaran',
+    polygon:'Polygon',
+    line:'Garis'
+  };
+
+  // REGISTER OBJECT
+  function registerObject(layer,type,name){
+
+    var id = Date.now() + Math.random();
+
+    objects.push({
+      id:id,
+      layer:layer,
+      type:type,
+      name:name
+    });
+
+    renderObjList();
+  }
+
+  // RENDER LIST
+  function renderObjList(){
+
+    var list = document.getElementById('obj-list');
+
+    list.innerHTML = '';
+
+    if(objects.length === 0){
+
+      list.innerHTML =
+        '<div class="empty-state">Belum ada objek</div>';
+
+      return;
+    }
+
+    objects.forEach(function(obj){
+
+      var item = document.createElement('div');
+
+      item.className = 'obj-item';
+
+      item.innerHTML =
+        '<div class="obj-icon" style="background:' + typeBg[obj.type] + '">' +
+        typeIcon[obj.type] +
+        '</div>' +
+
+        '<div class="obj-info">' +
+        '<div class="obj-name">' + obj.name + '</div>' +
+        '<div class="obj-type">' + typeLabel[obj.type] + '</div>' +
+        '</div>' +
+
+        '<button class="obj-del" onclick="deleteObj(\'' + obj.id + '\')">✕</button>';
+
+      item.addEventListener('click', function(e){
+
+        if(e.target.classList.contains('obj-del')) return;
+
+        if(obj.layer.getBounds){
+          map.fitBounds(obj.layer.getBounds());
+        }
+        else if(obj.layer.getLatLng){
+          map.setView(obj.layer.getLatLng(),16);
+        }
+
+        obj.layer.openPopup();
+
+      });
+
+      list.appendChild(item);
+
+    });
+  }
+
+  // DELETE OBJECT
+  function deleteObj(id){
+
+    objects = objects.filter(function(o){
+
+      if(o.id == id){
+        map.removeLayer(o.layer);
+        return false;
+      }
+
+      return true;
+
+    });
+
+    renderObjList();
+  }
+
+  // CLEAR ALL
+  function clearAll(){
+
+    if(!confirm('Hapus semua objek?')) return;
+
+    objects.forEach(function(o){
+      map.removeLayer(o.layer);
+    });
+
+    objects = [];
+
+    renderObjList();
+
+    cancelDraw();
+  }
+
+  // OPACITY DISPLAY
+  document.getElementById('pick-opacity')
+  .addEventListener('input', function(){
+
+    document.getElementById('opacity-val').textContent =
+      this.value + '%';
+
+  });
+
+</script>
+
+</body>
+</html>
